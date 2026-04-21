@@ -1,11 +1,10 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 export default function LoginPage() {
-  const router = useRouter();
   const params = useSearchParams();
   const next = params.get('next') ?? '/admin';
   const supabase = createClient();
@@ -22,13 +21,14 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
-    router.push(next);
-    router.refresh();
+    // Hard redirect zodat de server de nieuwe auth-cookie meteen ziet
+    // en de layout (met "ingelogd als ...") opnieuw rendert.
+    window.location.href = next;
   }
 
   return (
