@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Documentatie Platform
 
-## Getting Started
+Intern documentatieplatform met login, admin edit, en full-text search.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Next.js 16** (App Router) + **React 19** + **TypeScript** + **Tailwind 4**
+- **Supabase** voor Postgres database + auth + full-text search
+- Deploy op **Vercel** (gratis tier) — auto-deploy bij push naar GitHub
+
+## Setup (eenmalig)
+
+### 1. Supabase database opzetten
+
+1. Open je project: https://supabase.com/dashboard/project/upsbodyrmzlufrunlbva
+2. Ga naar **SQL Editor** → **New query**
+3. Kopieer de inhoud van `supabase-schema.sql` en voer uit (klik Run)
+4. Ga naar **Settings → API** en kopieer de **anon public** key
+
+### 2. Env vars
+
+Open `.env.local` en vul je Supabase anon key in:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://upsbodyrmzlufrunlbva.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...   <- vul hier je anon key in
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Eerste admin aanmaken
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Start de app: `npm run dev`
+2. Ga naar http://localhost:3000/login -> **Registreren**
+3. Open Supabase -> **Table Editor** -> `profiles`
+4. Zet de `role` van je gebruiker op `admin`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Nu kun je via `/admin` documenten toevoegen en bewerken.
 
-## Learn More
+## Ontwikkelen
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev      # lokaal draaien op http://localhost:3000
+npm run build    # production build
+npm run start    # production server
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Structuur
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/
+    page.tsx              # Home: docs lijst + zoekbalk
+    docs/[slug]/page.tsx  # Doc bekijken
+    login/page.tsx        # Login / registratie
+    admin/
+      page.tsx            # Admin dashboard
+      new/page.tsx        # Nieuwe doc
+      edit/[id]/page.tsx  # Doc bewerken
+      actions.ts          # Server actions (CRUD)
+  components/
+    DocEditor.tsx         # Markdown editor met preview
+    SignOutButton.tsx
+  lib/supabase/
+    client.ts             # browser Supabase client
+    server.ts             # server Supabase client
+  proxy.ts                # auth-bescherming voor /admin
+```
 
-## Deploy on Vercel
+## Deploy naar Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push deze map naar GitHub
+2. Op https://vercel.com -> **Add New Project** -> importeer de repo
+3. Voeg de twee env vars toe in Vercel (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+4. Deploy - elke push update de site automatisch
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Rollen
+
+- `admin` / `editor` - mag docs aanmaken, bewerken, verwijderen
+- `viewer` (default) - alleen lezen
+
+Rollen wijzig je in Supabase Table Editor -> `profiles` tabel.
