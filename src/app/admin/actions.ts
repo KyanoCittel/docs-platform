@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+export type ActionState = { ok: boolean; message: string } | null;
+
 function slugify(s: string) {
   return s
     .toLowerCase()
@@ -57,26 +59,36 @@ export async function createDoc(formData: FormData) {
   redirect(`/admin/edit/${data.id}`);
 }
 
-export async function updateDoc(id: string, formData: FormData) {
-  const { supabase } = await requireEditor();
+export async function updateDoc(
+  id: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const { supabase } = await requireEditor();
 
-  const title = String(formData.get('title') ?? '').trim();
-  const content = String(formData.get('content') ?? '');
-  const categoryId = String(formData.get('category_id') ?? '') || null;
-  const published = formData.get('published') === 'on';
+    const title = String(formData.get('title') ?? '').trim();
+    const content = String(formData.get('content') ?? '');
+    const categoryId = String(formData.get('category_id') ?? '') || null;
+    const published = formData.get('published') === 'on';
 
-  if (!title) throw new Error('Titel is verplicht');
+    if (!title) return { ok: false, message: 'Titel is verplicht' };
 
-  const { error } = await supabase
-    .from('docs')
-    .update({ title, content, category_id: categoryId, published })
-    .eq('id', id);
+    const { error } = await supabase
+      .from('docs')
+      .update({ title, content, category_id: categoryId, published })
+      .eq('id', id);
 
-  if (error) throw new Error(error.message);
+    if (error) return { ok: false, message: error.message };
 
-  revalidatePath('/');
-  revalidatePath('/admin');
-  revalidatePath(`/docs/[slug]`, 'page');
+    revalidatePath('/');
+    revalidatePath('/admin');
+    revalidatePath(`/docs/[slug]`, 'page');
+
+    return { ok: true, message: `Opgeslagen om ${new Date().toLocaleTimeString('nl-BE')}` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Onbekende fout' };
+  }
 }
 
 export async function deleteDoc(id: string) {
@@ -89,15 +101,23 @@ export async function deleteDoc(id: string) {
   redirect('/admin');
 }
 
-export async function createCategory(formData: FormData) {
-  const { supabase } = await requireEditor();
-  const name = String(formData.get('name') ?? '').trim();
-  if (!name) throw new Error('Naam verplicht');
+export async function createCategory(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const { supabase } = await requireEditor();
+    const name = String(formData.get('name') ?? '').trim();
+    if (!name) return { ok: false, message: 'Naam verplicht' };
 
-  const { error } = await supabase
-    .from('categories')
-    .insert({ name, slug: slugify(name) || `cat-${Date.now().toString(36)}` });
+    const { error } = await supabase
+      .from('categories')
+      .insert({ name, slug: slugify(name) || `cat-${Date.now().toString(36)}` });
 
-  if (error) throw new Error(error.message);
-  revalidatePath('/admin');
+    if (error) return { ok: false, message: error.message };
+    revalidatePath('/admin');
+    return { ok: true, message: `"${name}" toegevoegd` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Onbekende fout' };
+  }
 }

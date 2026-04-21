@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { ActionState } from '@/app/admin/actions';
 
 type Role = 'admin' | 'editor' | 'viewer';
 const ROLES: Role[] = ['admin', 'editor', 'viewer'];
@@ -26,55 +27,69 @@ async function requireRole(min: 'editor' | 'admin') {
   return { supabase, user, role: profile.role as Role };
 }
 
-export async function createUser(formData: FormData) {
-  const { role: actorRole } = await requireRole('editor');
+export async function createUser(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const { role: actorRole } = await requireRole('editor');
 
-  const email = String(formData.get('email') ?? '').trim().toLowerCase();
-  const password = String(formData.get('password') ?? '');
-  const newRole = String(formData.get('role') ?? 'viewer') as Role;
+    const email = String(formData.get('email') ?? '').trim().toLowerCase();
+    const password = String(formData.get('password') ?? '');
+    const newRole = String(formData.get('role') ?? 'viewer') as Role;
 
-  if (!email || !password) throw new Error('E-mail en wachtwoord verplicht');
-  if (password.length < 8) throw new Error('Wachtwoord minstens 8 tekens');
-  if (!ROLES.includes(newRole)) throw new Error('Ongeldige rol');
+    if (!email || !password) return { ok: false, message: 'E-mail en wachtwoord verplicht' };
+    if (password.length < 8) return { ok: false, message: 'Wachtwoord minstens 8 tekens' };
+    if (!ROLES.includes(newRole)) return { ok: false, message: 'Ongeldige rol' };
 
-  // Editors mogen geen admins aanmaken
-  if (actorRole === 'editor' && newRole === 'admin') {
-    throw new Error('Alleen een admin mag een nieuwe admin aanmaken');
+    if (actorRole === 'editor' && newRole === 'admin') {
+      return { ok: false, message: 'Alleen een admin mag een nieuwe admin aanmaken' };
+    }
+
+    const admin = createAdminClient();
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (error) return { ok: false, message: error.message };
+
+    const userId = data.user?.id;
+    if (!userId) return { ok: false, message: 'Geen user id teruggekregen' };
+
+    const { error: profileErr } = await admin
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId);
+    if (profileErr) return { ok: false, message: profileErr.message };
+
+    revalidatePath('/admin/users');
+    return { ok: true, message: `${email} aangemaakt als ${newRole}` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Onbekende fout' };
   }
-
-  const admin = createAdminClient();
-
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-  if (error) throw new Error(error.message);
-
-  const userId = data.user?.id;
-  if (!userId) throw new Error('Geen user id teruggekregen');
-
-  const { error: profileErr } = await admin
-    .from('profiles')
-    .update({ role: newRole })
-    .eq('id', userId);
-  if (profileErr) throw new Error(profileErr.message);
-
-  revalidatePath('/admin/users');
 }
 
-export async function updateUserRole(formData: FormData) {
-  await requireRole('admin');
+export async function updateUserRole(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    await requireRole('admin');
 
-  const id = String(formData.get('id') ?? '');
-  const newRole = String(formData.get('role') ?? '') as Role;
-  if (!id || !ROLES.includes(newRole)) throw new Error('Ongeldige invoer');
+    const id = String(formData.get('id') ?? '');
+    const newRole = String(formData.get('role') ?? '') as Role;
+    if (!id || !ROLES.includes(newRole)) return { ok: false, message: 'Ongeldige invoer' };
 
-  const admin = createAdminClient();
-  const { error } = await admin.from('profiles').update({ role: newRole }).eq('id', id);
-  if (error) throw new Error(error.message);
+    const admin = createAdminClient();
+    const { error } = await admin.from('profiles').update({ role: newRole }).eq('id', id);
+    if (error) return { ok: false, message: error.message };
 
-  revalidatePath('/admin/users');
+    revalidatePath('/admin/users');
+    return { ok: true, message: `Rol bijgewerkt naar ${newRole}` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Onbekende fout' };
+  }
 }
 
 export async function deleteUser(formData: FormData) {

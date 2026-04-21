@@ -2,7 +2,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createUser, updateUserRole, deleteUser } from './actions';
+import CreateUserForm from '@/components/CreateUserForm';
+import UserRoleForm from '@/components/UserRoleForm';
+import DeleteUserButton from '@/components/DeleteUserButton';
+
+type Role = 'admin' | 'editor' | 'viewer';
 
 export default async function UsersPage() {
   const supabase = await createClient();
@@ -21,7 +25,6 @@ export default async function UsersPage() {
 
   const isAdmin = me.role === 'admin';
 
-  // Haal alle users op via service-role (profiles heeft alleen id/email/role)
   const admin = createAdminClient();
   const { data: profiles } = await admin
     .from('profiles')
@@ -37,27 +40,9 @@ export default async function UsersPage() {
 
       <section className="bg-white border rounded-md p-4 space-y-3">
         <h2 className="font-semibold">Nieuwe gebruiker aanmaken</h2>
-        <form action={createUser} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">E-mail</label>
-            <input name="email" type="email" required className="w-full border rounded-md px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Wachtwoord (min. 8)</label>
-            <input name="password" type="text" required minLength={8} className="w-full border rounded-md px-3 py-2 font-mono" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Rol</label>
-            <select name="role" defaultValue="viewer" className="w-full border rounded-md px-3 py-2 bg-white">
-              <option value="viewer">Viewer (alleen lezen)</option>
-              <option value="editor">Editor (mag bewerken)</option>
-              {isAdmin && <option value="admin">Admin</option>}
-            </select>
-          </div>
-          <button className="px-4 py-2 rounded-md bg-black text-white">Aanmaken</button>
-        </form>
+        <CreateUserForm isAdmin={isAdmin} />
         <p className="text-xs text-gray-500">
-          Tip: kies zelf een startwachtwoord, geef het door aan de gebruiker, en laat hem het wijzigen via de profielpagina (komt later).
+          Tip: kies een startwachtwoord en geef het door aan de gebruiker.
         </p>
       </section>
 
@@ -75,29 +60,8 @@ export default async function UsersPage() {
 
               {isAdmin ? (
                 <div className="flex items-center gap-2">
-                  <form action={updateUserRole} className="flex items-center gap-2">
-                    <input type="hidden" name="id" value={p.id} />
-                    <select
-                      name="role"
-                      defaultValue={p.role}
-                      className="border rounded-md px-2 py-1 text-sm bg-white"
-                    >
-                      <option value="viewer">viewer</option>
-                      <option value="editor">editor</option>
-                      <option value="admin">admin</option>
-                    </select>
-                    <button className="text-sm px-3 py-1 rounded-md border hover:bg-gray-50">
-                      Opslaan
-                    </button>
-                  </form>
-                  {p.id !== user.id && (
-                    <form action={deleteUser}>
-                      <input type="hidden" name="id" value={p.id} />
-                      <button className="text-sm px-3 py-1 rounded-md border text-red-600 hover:bg-red-50">
-                        Verwijderen
-                      </button>
-                    </form>
-                  )}
+                  <UserRoleForm id={p.id} role={p.role as Role} />
+                  {p.id !== user.id && <DeleteUserButton id={p.id} />}
                 </div>
               ) : (
                 <span className="text-xs text-gray-400">alleen admins kunnen rollen wijzigen</span>
