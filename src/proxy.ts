@@ -25,10 +25,14 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
+  const path = request.nextUrl.pathname;
+  const publicPaths = ['/login'];
+  const isPublic = publicPaths.some((p) => path === p || path.startsWith(`${p}/`));
+
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('next', request.nextUrl.pathname);
+    url.searchParams.set('next', path);
     return NextResponse.redirect(url);
   }
 
