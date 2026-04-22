@@ -75,11 +75,15 @@ export async function updateUserRole(
   formData: FormData
 ): Promise<ActionState> {
   try {
-    await requireRole('admin');
+    const { user } = await requireRole('admin');
 
     const id = String(formData.get('id') ?? '');
     const newRole = String(formData.get('role') ?? '') as Role;
     if (!id || !ROLES.includes(newRole)) return { ok: false, message: 'Ongeldige invoer' };
+
+    if (id === user.id) {
+      return { ok: false, message: 'Je kan je eigen rol niet wijzigen. Laat een andere admin dat doen.' };
+    }
 
     const admin = createAdminClient();
     const { error } = await admin.from('profiles').update({ role: newRole }).eq('id', id);

@@ -49,25 +49,39 @@ export default async function UsersPage() {
       <section className="bg-white border rounded-md">
         <h2 className="px-4 py-3 border-b font-semibold">Bestaande gebruikers</h2>
         <ul className="divide-y">
-          {(profiles ?? []).map((p) => (
-            <li key={p.id} className="flex items-center justify-between px-4 py-3 gap-3">
-              <div>
-                <div className="font-medium">{p.email ?? '(geen e-mail)'}</div>
-                <div className="text-xs text-gray-500">
-                  {p.role} · aangemaakt {new Date(p.created_at).toLocaleDateString('nl-BE')}
+          {(profiles ?? []).map((p) => {
+            const isSelf = p.id === user.id;
+            return (
+              <li key={p.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                <div>
+                  <div className="font-medium">
+                    {p.email ?? '(geen e-mail)'}
+                    {isSelf && <span className="ml-2 text-xs text-gray-500">(jij)</span>}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {p.role} · aangemaakt {new Date(p.created_at).toLocaleDateString('nl-BE')}
+                  </div>
                 </div>
-              </div>
 
-              {isAdmin ? (
-                <div className="flex items-center gap-2">
-                  <UserRoleForm id={p.id} role={p.role as Role} />
-                  {p.id !== user.id && <DeleteUserButton id={p.id} />}
-                </div>
-              ) : (
-                <span className="text-xs text-gray-400">alleen admins kunnen rollen wijzigen</span>
-              )}
-            </li>
-          ))}
+                {isAdmin ? (
+                  <div className="flex items-center gap-2">
+                    {isSelf ? (
+                      <span className="text-xs text-gray-400">
+                        je kan je eigen rol niet wijzigen
+                      </span>
+                    ) : (
+                      <>
+                        <UserRoleForm id={p.id} role={p.role as Role} />
+                        <DeleteUserButton id={p.id} />
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400">alleen admins kunnen rollen wijzigen</span>
+                )}
+              </li>
+            );
+          })}
           {(!profiles || profiles.length === 0) && (
             <li className="px-4 py-6 text-gray-500 text-sm">Nog geen gebruikers.</li>
           )}
