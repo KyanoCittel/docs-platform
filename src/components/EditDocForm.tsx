@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import DocEditor from '@/components/DocEditor';
 import SubmitButton from '@/components/SubmitButton';
 import { updateDoc, type ActionState } from '@/app/admin/actions';
+import { useToastOnAction } from '@/components/Toast';
 
 type Category = { id: string; name: string };
 type Doc = {
@@ -23,6 +24,7 @@ export default function EditDocForm({
 }) {
   const action = updateDoc.bind(null, doc.id);
   const [state, formAction] = useActionState<ActionState, FormData>(action, null);
+  useToastOnAction(state);
 
   return (
     <form action={formAction} className="space-y-4">

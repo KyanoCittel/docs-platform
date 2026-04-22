@@ -4,10 +4,12 @@ import { useActionState, useEffect, useRef } from 'react';
 import SubmitButton from '@/components/SubmitButton';
 import { createUser } from '@/app/admin/users/actions';
 import type { ActionState } from '@/app/admin/actions';
+import { useToastOnAction } from '@/components/Toast';
 
 export default function CreateUserForm({ isAdmin }: { isAdmin: boolean }) {
   const [state, action] = useActionState<ActionState, FormData>(createUser, null);
   const formRef = useRef<HTMLFormElement>(null);
+  useToastOnAction(state);
 
   useEffect(() => {
     if (state?.ok) formRef.current?.reset();

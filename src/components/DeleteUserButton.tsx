@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useActionState, useState } from 'react';
 import SubmitButton from '@/components/SubmitButton';
 import { deleteUser } from '@/app/admin/users/actions';
+import type { ActionState } from '@/app/admin/actions';
+import { useToastOnAction } from '@/components/Toast';
 
 export default function DeleteUserButton({ id }: { id: string }) {
   const [confirm, setConfirm] = useState(false);
+  const [state, action] = useActionState<ActionState, FormData>(deleteUser, null);
+  useToastOnAction(state);
 
   if (!confirm) {
     return (
@@ -20,7 +24,7 @@ export default function DeleteUserButton({ id }: { id: string }) {
   }
 
   return (
-    <form action={deleteUser} className="flex items-center gap-2">
+    <form action={action} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />
       <button
         type="button"

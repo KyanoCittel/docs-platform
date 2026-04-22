@@ -3,10 +3,12 @@
 import { useActionState, useEffect, useRef } from 'react';
 import SubmitButton from '@/components/SubmitButton';
 import { createCategory, type ActionState } from '@/app/admin/actions';
+import { useToastOnAction } from '@/components/Toast';
 
 export default function CategoryForm() {
   const [state, action] = useActionState<ActionState, FormData>(createCategory, null);
   const formRef = useRef<HTMLFormElement>(null);
+  useToastOnAction(state);
 
   useEffect(() => {
     if (state?.ok) formRef.current?.reset();

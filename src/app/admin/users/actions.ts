@@ -96,16 +96,24 @@ export async function updateUserRole(
   }
 }
 
-export async function deleteUser(formData: FormData) {
-  const { user } = await requireRole('admin');
+export async function deleteUser(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const { user } = await requireRole('admin');
 
-  const id = String(formData.get('id') ?? '');
-  if (!id) throw new Error('Geen id');
-  if (id === user.id) throw new Error('Je kan jezelf niet verwijderen');
+    const id = String(formData.get('id') ?? '');
+    if (!id) return { ok: false, message: 'Geen id' };
+    if (id === user.id) return { ok: false, message: 'Je kan jezelf niet verwijderen' };
 
-  const admin = createAdminClient();
-  const { error } = await admin.auth.admin.deleteUser(id);
-  if (error) throw new Error(error.message);
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.deleteUser(id);
+    if (error) return { ok: false, message: error.message };
 
-  revalidatePath('/admin/users');
+    revalidatePath('/admin/users');
+    return { ok: true, message: 'Gebruiker verwijderd' };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Onbekende fout' };
+  }
 }
